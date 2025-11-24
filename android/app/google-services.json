@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "610574806316",
+    "project_id": "pricebook-eef85",
+    "storage_bucket": "pricebook-eef85.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610574806316:android:8501ea36deacdb4077d089",
+        "android_client_info": {
+          "package_name": "com.example.price_book"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfnETmvsn0RTNtVS38ypE2DmmBVBx0E6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

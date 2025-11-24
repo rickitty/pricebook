@@ -1,0 +1,34 @@
+import 'package:flutter/material.dart';
+
+Color bgColor = Color.fromRGBO(239, 236, 227, 1);
+Color lightBlue = Color.fromRGBO(143, 171, 212, 1);
+Color darkBlue = Color.fromRGBO(74, 112, 169, 1);
+Color darkBlack = Colors.black;
+
+const phoneNumber = 'Phone_number';
+const pleaseEnterPhoneNumber = 'Please_enter_phone_number';
+const enterPhoneNumber = 'Enter_phone_number';
+const getCode = 'Get_code';
+const weWillSendYouAVerificationCodeBySMS='We_will_send_you_a_verification_code_by_SMS';
+const phoneNumberVerification = 'Phone_number_verification';
+const weSentAVerificationCodeTo = 'We_sent_a_verification_code_to';
+const enter6DigitCode='Enter_6_digit_code';
+const confirm = 'Confirm';
+const didNotReceiveTheCode = 'Did_not_receive_the_code';
+const sendAgain = 'Send_again';
+const changePhoneNumber='Change_phone_number';
+const goodMorning = 'Good_morning';
+const goodAfternoon = 'Good_afternoon';
+const goodEvening='Good_evening';
+const goodNight = 'Good_night';
+const adminPanel='Admin_panel';
+const menu = 'Menu';
+const logout = 'Logout';
+const becomeAnAdmin='Become_an_admin';
+const cancel = 'Cancel';
+const password = 'Password';
+const enterAdminPassword='Enter_admin_password';
+const incorrectPassword='Incorrect_password';
+const addAssignment='Add_assignment';
+const changeLanguage='Change_language';
+const selectLanguage='Select_language';
