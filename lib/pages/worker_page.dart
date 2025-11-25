@@ -24,6 +24,7 @@ class _WorkerPageState extends State<WorkerPage> {
   String phone = "";
 
   DateTime selectedDate = DateTime.now();
+  bool filterActive = false;
 
   String getLocalized(dynamic data, String locale) {
     if (data == null || data is! Map) return "";
@@ -108,6 +109,7 @@ class _WorkerPageState extends State<WorkerPage> {
     }
 
     return Geolocator.getCurrentPosition(
+      // ignore: deprecated_member_use
       desiredAccuracy: LocationAccuracy.high,
     );
   }
@@ -243,12 +245,6 @@ class _WorkerPageState extends State<WorkerPage> {
               'Сегодня: $todayStr',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            TextButton(
-              onPressed: () {
-                setState(() => selectedDate = DateTime.now());
-              },
-              child: const Text('Сегодня'),
-            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -263,7 +259,14 @@ class _WorkerPageState extends State<WorkerPage> {
 
               return GestureDetector(
                 onTap: () {
-                  setState(() => selectedDate = day);
+                  setState(() {
+                    if (filterActive && isSelected) {
+                      filterActive = false;
+                    } else {
+                      selectedDate = day;
+                      filterActive = true;
+                    }
+                  });
                 },
                 child: Container(
                   width: 60,
@@ -312,16 +315,21 @@ class _WorkerPageState extends State<WorkerPage> {
   Widget build(BuildContext context) {
     final locale = context.locale.languageCode;
 
-    final List filteredTasks = tasks.where((t) {
-      final raw = t['date'];
-      if (raw == null) return false;
-      try {
-        final dt = DateTime.parse(raw.toString()).toLocal();
-        return _isSameDate(dt, selectedDate);
-      } catch (_) {
-        return false;
-      }
-    }).toList();
+    final List filteredTasks;
+    if (!filterActive) {
+      filteredTasks = tasks;
+    } else {
+      filteredTasks = tasks.where((t) {
+        final raw = t['date'];
+        if (raw == null) return false;
+        try {
+          final dt = DateTime.parse(raw.toString()).toLocal();
+          return _isSameDate(dt, selectedDate);
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text("Рабочие задачи".tr())),
