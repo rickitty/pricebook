@@ -14,7 +14,8 @@ class WorkerProductTaskPage extends StatefulWidget {
   final String taskId;
   final String objectId;
   final String productId;
-  final String productName;
+  final String productName;          
+  final String? productCategory;     
   final String? existingPhotoUrl;
   final String? existingPrice;
 
@@ -24,6 +25,7 @@ class WorkerProductTaskPage extends StatefulWidget {
     required this.objectId,
     required this.productId,
     required this.productName,
+    this.productCategory,
     this.existingPhotoUrl,
     this.existingPrice,
   });
@@ -39,6 +41,10 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
   XFile? _capturedFile;
   final _priceController = TextEditingController();
   bool _saving = false;
+
+  bool get _isAlreadyFilled =>
+      (widget.existingPhotoUrl != null && widget.existingPhotoUrl!.isNotEmpty) &&
+      (widget.existingPrice != null && widget.existingPrice!.isNotEmpty);
 
   @override
   void initState() {
@@ -150,6 +156,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       request.fields['price'] = _priceController.text.trim();
       request.fields['lat'] = pos.latitude.toString();
       request.fields['lng'] = pos.longitude.toString();
+      // Пока стоит для отладки — если на бэке начнёшь учитывать, можешь убрать
       request.fields['debugIgnoreGeo'] = '1';
 
       if (_capturedFile != null) {
@@ -172,12 +179,28 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       } else if (response.statusCode == 403) {
         final body = await response.stream.bytesToString();
         final data = jsonDecode(body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Геолокация не совпадает с объектом. distance=${data["distance"]}',
-            ),
-          ),
+
+        final distance = (data['distance'] as num?)?.toDouble();
+
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Геолокация не совпадает'),
+              content: Text(
+                distance != null
+                    ? 'Вы слишком далеко от объекта.\n'
+                      'Текущее расстояние: ${distance.toStringAsFixed(0)} м.'
+                    : 'Вы слишком далеко от объекта.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Понятно'),
+                ),
+              ],
+            );
+          },
         );
       } else {
         final body = await response.stream.bytesToString();
@@ -198,6 +221,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
 
   @override
   Widget build(BuildContext context) {
+    // КАМЕРА
     Widget cameraArea;
     if (_cameraController == null || _initCameraFuture == null) {
       cameraArea = const Center(child: CircularProgressIndicator());
@@ -217,6 +241,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       );
     }
 
+    // ПРЕВЬЮ ФОТО
     Widget photoPreview;
     if (_capturedFile != null) {
       if (kIsWeb) {
@@ -232,7 +257,8 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
           fit: BoxFit.cover,
         );
       }
-    } else if (widget.existingPhotoUrl != null) {
+    } else if (widget.existingPhotoUrl != null &&
+        widget.existingPhotoUrl!.isNotEmpty) {
       const fileBaseUrl = 'http://localhost:3000';
       photoPreview = Image.network(
         '$fileBaseUrl${widget.existingPhotoUrl}',
@@ -243,10 +269,94 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       photoPreview = const Text('Фото ещё нет');
     }
 
+    // КАРТОЧКА ТОВАРА (НАЗВАНИЕ + КАТЕГОРИЯ + СТАТУС)
+    Widget productHeader = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.productName.isEmpty ? 'Без названия' : widget.productName,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (widget.productCategory != null &&
+              widget.productCategory!.isNotEmpty)
+            Text(
+              widget.productCategory!,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _isAlreadyFilled
+                      ? Colors.green.withOpacity(0.12)
+                      : Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isAlreadyFilled
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 16,
+                      color: _isAlreadyFilled ? Colors.green : Colors.orange,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _isAlreadyFilled ? 'Уже заполнено' : 'Нужно заполнить',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            _isAlreadyFilled ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (widget.existingPrice != null &&
+                  widget.existingPrice!.isNotEmpty)
+                Text(
+                  'Текущая цена: ${widget.existingPrice}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.productName)),
+      appBar: AppBar(title: Text(widget.productName.isEmpty
+          ? 'Продукт'
+          : widget.productName)),
       body: Column(
         children: [
+          productHeader,
           Expanded(
             flex: 3,
             child: Container(
@@ -254,7 +364,6 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
               child: Center(child: cameraArea),
             ),
           ),
-
           Expanded(
             flex: 2,
             child: Padding(
@@ -292,7 +401,11 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
                     child: ElevatedButton(
                       onPressed: _saving ? null : _save,
                       child: _saving
-                          ? const CircularProgressIndicator()
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Text('Сохранить'),
                     ),
                   ),
