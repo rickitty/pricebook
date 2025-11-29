@@ -59,7 +59,7 @@ class OtpStep extends StatelessWidget {
 
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(6, (index) {
+          children: List.generate(4, (index) {
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -95,7 +95,7 @@ class OtpStep extends StatelessWidget {
                       ),
                     ),
                     onChanged: (value) {
-                      if (value.isNotEmpty && index < 5) {
+                      if (value.isNotEmpty && index < 3) {
                         FocusScope.of(
                           context,
                         ).requestFocus(focusNodes[index + 1]);

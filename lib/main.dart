@@ -1,17 +1,14 @@
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:price_book/pages/login_screen.dart';
-import 'firebase_options.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 // import 'pages/login_page.dart';
 import 'pages/home_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await EasyLocalization.ensureInitialized();
   runApp(
     EasyLocalization(
@@ -39,7 +36,7 @@ class MyApp extends StatelessWidget {
       ],
       supportedLocales: context.supportedLocales,
       locale: context.locale.languageCode == 'kz'
-          ? Locale('en') 
+          ? Locale('en')
           : context.locale,
       home: AuthWrapper(),
     );
@@ -48,19 +45,32 @@ class MyApp extends StatelessWidget {
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
+  Future<Map<String, String?>> _getTokenAndRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    final role = prefs.getString("role");
+    return {"token": token, "role": role};
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return FutureBuilder<Map<String, String?>>(
+      future: _getTokenAndRole(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(body: Center(child: CircularProgressIndicator()));
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
-        if (snapshot.hasData) {
-          return HomePage();
+
+        final token = snapshot.data!["token"];
+        final role = snapshot.data!["role"];
+
+        if (token == null || role == null) {
+          return const LoginScreen();
         }
-        return LoginScreen();
+
+        return HomePage(roleFromLogin: role);
       },
     );
   }

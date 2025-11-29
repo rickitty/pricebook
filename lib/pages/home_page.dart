@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:price_book/pages/admin_page.dart';
+import 'package:price_book/pages/login_screen.dart';
+import 'package:price_book/pages/worker_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'worker_page.dart';
-import 'admin_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String? roleFromLogin;
+  const HomePage({super.key, this.roleFromLogin});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -19,48 +19,38 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _initRole();
+    _loadRole();
   }
 
-  Future<void> _initRole() async {
+  Future<void> _loadRole() async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedRole = prefs.getString("role");
+    role = widget.roleFromLogin?.trim() ?? prefs.getString("role")?.trim();
 
-    if (cachedRole != null) {
-      setState(() {
-        role = cachedRole;
-        isLoading = false;
-      });
-      return;
-    }
+    if (role != null) await prefs.setString("role", role!);
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final snap = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    String roleFromDb = "worker";
-    if (snap.exists &&
-        snap.data() != null &&
-        snap.data()!.containsKey("role")) {
-      roleFromDb = snap["role"];
-    }
-
-    await prefs.setString("role", roleFromDb);
+    print("Loaded role: $role");
 
     setState(() {
-      role = roleFromDb;
       isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (isLoading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    if (role == null) {
+      Future.microtask(() {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      });
+      return const SizedBox.shrink();
     }
 
-    if (role == "admin") return AdminPage();
-    return WorkerPage();
+    if (role!.toLowerCase() == "admin") return const AdminPage();
+    return const WorkerPage();
   }
 }

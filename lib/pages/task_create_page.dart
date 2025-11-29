@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:price_book/keys.dart';
 import '../config.dart';
@@ -36,11 +35,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
   }
 
   Future<void> loadWorkers() async {
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
-    final res = await http.get(
-      Uri.parse(workersUrl),
-      headers: {"Authorization": "Bearer $token"},
-    );
+    final res = await http.get(Uri.parse(workersUrl));
     if (res.statusCode == 200) {
       setState(() => workers = jsonDecode(res.body));
     }
@@ -50,10 +45,8 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
     final locale = context.locale.languageCode;
     print("Loading objects for workerId=$workerId on language $locale");
 
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
     final res = await http.get(
       Uri.parse("$baseUrl/object/objects-of/$workerId?lang=$locale"),
-      headers: {"Authorization": "Bearer $token"},
     );
 
     if (res.statusCode == 200) {
@@ -68,11 +61,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
     final locale = context.locale.languageCode;
     print("Loading products on language: $locale");
 
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
-    final res = await http.get(
-      Uri.parse("$baseUrl/products?lang=$locale"),
-      headers: {"Authorization": "Bearer $token"},
-    );
+    final res = await http.get(Uri.parse("$baseUrl/products?lang=$locale"));
 
     if (res.statusCode == 200) {
       setState(() => products = jsonDecode(res.body));
@@ -101,14 +90,9 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
       };
     }).toList();
 
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
-
     final res = await http.post(
       Uri.parse("$baseUrl/tasks/create-task"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "workerId": selectedWorker,
         "date":

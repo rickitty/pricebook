@@ -1,7 +1,6 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:price_book/keys.dart';
 import 'dart:convert';
@@ -30,12 +29,7 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
   }
 
   Future<void> loadWorkers() async {
-    final idToken = await FirebaseAuth.instance.currentUser!.getIdToken();
-
-    final res = await http.get(
-      Uri.parse(workersUrl),
-      headers: {"Authorization": "Bearer $idToken"},
-    );
+    final res = await http.get(Uri.parse(workersUrl));
 
     if (res.statusCode == 200) {
       setState(() {
@@ -45,12 +39,7 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
   }
 
   Future<void> loadObjects() async {
-    final idToken = await FirebaseAuth.instance.currentUser!.getIdToken();
-
-    final res = await http.get(
-      Uri.parse(objectsUrl),
-      headers: {"Authorization": "Bearer $idToken"},
-    );
+    final res = await http.get(Uri.parse(objectsUrl));
 
     if (res.statusCode == 200) {
       setState(() {
@@ -61,15 +50,9 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
 
   Future<void> save() async {
     if (selectedWorker == null) return;
-
-    final idToken = await FirebaseAuth.instance.currentUser!.getIdToken();
-
     final res = await http.post(
       Uri.parse(assignObjectsUrl),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $idToken",
-      },
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": selectedWorker, "objectIds": selected}),
     );
 

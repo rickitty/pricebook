@@ -1,17 +1,14 @@
 // lib/screens/login/login_screen.dart
+// Version rewritten to remove Firebase and use company API
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:price_book/config.dart';
+import 'package:price_book/keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../../config.dart';
-import '../../keys.dart';
+import 'package:easy_localization/easy_localization.dart';
 import './home_page.dart';
 import 'widgets/phone_step.dart';
 import 'widgets/otp_step.dart';
@@ -35,7 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool isCodeSent = false;
-  String? _verificationId;
 
   @override
   void dispose() {
@@ -55,11 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              lightBlue,
-              // ignore: deprecated_member_use
-              lightBlue.withOpacity(0.85),
-            ],
+            colors: [lightBlue, lightBlue.withOpacity(0.85)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -84,7 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         vertical: 24,
                       ),
                       decoration: BoxDecoration(
-                        // ignore: deprecated_member_use
                         color: Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
@@ -95,7 +86,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             blurRadius: 18,
                             spreadRadius: 2,
                             offset: const Offset(0, 10),
-                            // ignore: deprecated_member_use
                             color: const Color.fromARGB(
                               255,
                               107,
@@ -114,9 +104,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.white,
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          const Text(
                             'Price Book',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
@@ -139,19 +129,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             switchInCurve: Curves.easeOutCubic,
                             switchOutCurve: Curves.easeInCubic,
                             transitionBuilder: (child, animation) {
-                              final fadeAnimation = CurvedAnimation(
+                              final fade = CurvedAnimation(
                                 parent: animation,
                                 curve: Curves.easeInOut,
                               );
-                              final slideAnimation = Tween<Offset>(
+                              final slide = Tween<Offset>(
                                 begin: const Offset(0.08, 0),
                                 end: Offset.zero,
                               ).animate(animation);
 
                               return FadeTransition(
-                                opacity: fadeAnimation,
+                                opacity: fade,
                                 child: SlideTransition(
-                                  position: slideAnimation,
+                                  position: slide,
                                   child: child,
                                 ),
                               );
@@ -199,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _verifyPhone() async {
-    final raw = _phoneController.text.trim();
+    final raw = _phoneController.text.replaceAll(RegExp(r'\D'), '');
 
     if (raw.isEmpty) {
       ScaffoldMessenger.of(
@@ -208,29 +198,27 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (raw.length != 11) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Введите корректный номер")));
+      return;
+    }
+
     try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: raw,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          await FirebaseAuth.instance.signInWithCredential(credential);
-          await _afterLogin();
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          debugPrint('PHONE AUTH ERROR: code=${e.code}, message=${e.message}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.code}\n${e.message}')),
-          );
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          setState(() {
-            _verificationId = verificationId;
-            isCodeSent = true;
-          });
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-        },
+      final response = await http.post(
+        Uri.parse(sendCode),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"userName": raw}),
       );
+
+      if (response.statusCode == 200) {
+        setState(() => isCodeSent = true);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(response.body)));
+      }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -239,79 +227,65 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _signInWithCode() async {
-    if (_verificationId == null) return;
-
     final smsCode = _otpControllers.map((c) => c.text).join();
-    if (smsCode.length != 6) {
+    final rawPhone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+
+    if (smsCode.length != 4) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(enter6DigitCode.tr())));
       return;
     }
 
-    try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: smsCode,
+    if (rawPhone.length != 11) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Номер телефона должен быть 11 цифр")),
       );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      await _afterLogin();
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  Future<void> _afterLogin() async {
-    final user = FirebaseAuth.instance.currentUser!;
-    final idToken = await user.getIdToken();
-
-    final response = await http.post(
-      Uri.parse(ensureUser),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $idToken',
-      },
-      body: jsonEncode({}),
-    );
-
-    if (response.statusCode != 200) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Server error: ${response.body}")));
       return;
     }
 
-    final data = jsonDecode(response.body);
-    final role = data["role"] ?? "worker";
+    try {
+      final response = await http.post(
+        Uri.parse(login),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"username": rawPhone, "code": smsCode}),
+      );
 
-    final userRef = FirebaseFirestore.instance
-        .collection("users")
-        .doc(user.uid);
+      if (response.statusCode != 200) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(response.body)));
+        return;
+      }
 
-    final snapshot = await userRef.get();
+      final data = jsonDecode(response.body);
+      print("Login response data: $data");
+      print(
+        "Token: ${data["token"]}, Refresh: ${data["refreshToken"]}, Role: ${data["role"]}",
+      );
+      print("Mounted: $mounted");
 
-    if (!snapshot.exists) {
-      await userRef.set({
-        "phone": user.phoneNumber,
-        "role": role,
-        "createdAt": DateTime.now(),
-      });
-    } else {
-      await userRef.update({"role": role});
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setString("token", data["token"]);
+      await prefs.setString("refreshToken", data["refreshToken"]);
+      await prefs.setString("role", data["role"]);
+      await prefs.setString("phone", _phoneController.text.replaceAll(RegExp(r'\D'), ''));
+      
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HomePage(roleFromLogin: data["role"]),
+        ),
+      );
+    } catch (e, st) {
+      print("Login exception: $e\n$st");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Ошибка при логине: $e")));
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("role", role);
-
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
-    );
   }
 
   String getGreeting() {
