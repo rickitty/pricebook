@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:price_book/keys.dart';
 import '../config.dart';
 import 'worker_product_task_page.dart';
 
@@ -49,20 +49,41 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
     }
 
     return Geolocator.getCurrentPosition(
-      // ignore: deprecated_member_use
       desiredAccuracy: LocationAccuracy.high,
     );
   }
 
-  Color _categoryColor(String category) {
-    final lower = category.toLowerCase();
+  Color _categoryColor(String localizedCategory) {
+    final lower = localizedCategory.toLowerCase();
 
-    if (lower.contains('круп')) return Colors.orange;
-    if (lower.contains('молок')) return Colors.blue;
-    if (lower.contains('овощ')) return Colors.green;
-    if (lower.contains('фрукт')) return Colors.red;
-    if (lower.contains('напит')) return Colors.purple;
-    if (lower.contains('хлеб') || lower.contains('выпеч')) return Colors.brown;
+    if (lower.contains('dairy') ||
+        lower.contains('молоч') ||
+        lower.contains('сүт'))
+      return Colors.blue;
+    if (lower.contains('vegetables') ||
+        lower.contains('овощ') ||
+        lower.contains('көкөніс'))
+      return Colors.green;
+    if (lower.contains('fruit') ||
+        lower.contains('фрукт') ||
+        lower.contains('жеміс'))
+      return Colors.red;
+    if (lower.contains('drink') ||
+        lower.contains('напит') ||
+        lower.contains('сусын'))
+      return Colors.purple;
+    if (lower.contains('bake') ||
+        lower.contains('хлеб') ||
+        lower.contains('нан'))
+      return Colors.brown;
+    if (lower.contains('cereal') ||
+        lower.contains('круп') ||
+        lower.contains('дән'))
+      return Colors.orange;
+    if (lower.contains('animal') ||
+        lower.contains('животно') ||
+        lower.contains('ауылшаруашылық'))
+      return const Color.fromARGB(255, 201, 75, 117);
 
     return Colors.grey;
   }
@@ -75,7 +96,7 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
           await FirebaseAuth.instance.currentUser?.getIdToken(true) ?? "";
 
       if (token.isEmpty) {
-        throw Exception('Нет токена авторизации');
+        throw Exception('No authorization token');
       }
 
       final uri = Uri.parse(
@@ -114,15 +135,17 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
             context: context,
             builder: (context) {
               return AlertDialog(
-                title: const Text('Расстояние до объекта'),
+                title: Text(distanceToObject.tr()),
                 content: Text(
-                  'Вы находитесь на расстоянии '
-                  '${distance.toStringAsFixed(0)} м от объекта.',
+                  yourDistanceFromObjectIs.tr() +
+                      ': ' +
+                      distance.toStringAsFixed(0) +
+                      m.tr(),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('ОК'),
+                    child: Text(confirm.tr()),
                   ),
                 ],
               );
@@ -139,17 +162,17 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: const Text('Геолокация не совпадает'),
+              title: Text(geolocationIsNotMatching.tr()),
               content: Text(
                 distance != null
-                    ? 'Вы слишком далеко от объекта.\n'
-                          'Текущее расстояние: ${distance.toStringAsFixed(0)} м.'
-                    : 'Вы слишком далеко от объекта.',
+                    ? '${youAreTooFarFromTheObject.tr()}\n'
+                          '${currentDistance.tr()}: ${distance.toStringAsFixed(0)} м.'
+                    : youAreTooFarFromTheObject.tr(),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Понятно'),
+                  child: Text(confirm.tr()),
                 ),
               ],
             );
@@ -158,25 +181,24 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
       } else {
         debugPrint('loadProducts error: ${res.statusCode} ${res.body}');
         setState(() => loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка загрузки продуктов')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(loadProductsError.tr())));
       }
     } catch (e) {
       debugPrint('loadProducts exception: $e');
       if (!mounted) return;
       setState(() => loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка геолокации или сети')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(geolocationOrNetworkError.tr())));
     }
   }
 
   @override
   void initState() {
     super.initState();
-    // по желанию можно сразу грузить продукты:
-    // _loadProducts();
+    _loadProducts();
   }
 
   @override
@@ -188,7 +210,6 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
       return data[locale] ?? data["en"] ?? data.values.first.toString();
     }
 
-    // собираем список категорий (локализованных)
     final categorySet = <String>{};
     for (final p in products) {
       final cat = getLocalized((p as Map<String, dynamic>)['category']);
@@ -198,7 +219,6 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
     }
     final categories = categorySet.toList()..sort();
 
-    // применяем фильтр по категории
     final visibleProducts = selectedCategory == null
         ? products
         : products.where((raw) {
@@ -220,7 +240,7 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
           children: [
             const SizedBox(width: 4),
             ChoiceChip(
-              label: const Text('Все'),
+              label: Text(all.tr()),
               selected: selectedCategory == null,
               onSelected: (_) {
                 setState(() {
@@ -268,8 +288,8 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              'Товары пока не загружены.\n'
-              'Проверьте геолокацию значком вверху экрана, чтобы загрузить список.',
+              '${theProductsHaveNotLoadedYet.tr()}.\n'
+              '${checkYourGeo.tr()}.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -285,6 +305,7 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
           final status = (p['status'] ?? 'pending') as String;
           final price = p['price'];
           final photoUrl = p['photoUrl'];
+          final imageUrl = p['imageUrl'];
 
           IconData icon;
           Color color;
@@ -297,9 +318,14 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
           }
 
           return ListTile(
-            leading: Icon(icon, color: color),
+            leading: imageUrl != null
+                ? SizedBox(
+                    height: 50,
+                    child: Image.network(imageUrl, fit: BoxFit.cover),
+                  )
+                : Icon(icon, color: color),
             title: Text(
-              name.isEmpty ? 'Без названия' : name,
+              name.isEmpty ? noName.tr() : name,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: Column(
@@ -328,7 +354,7 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
                     ),
                   ),
                 Text(
-                  status == 'added' ? 'Цена: $price' : 'Не заполнено',
+                  status == 'added' ? '${price.tr()}: $price' : notFilled.tr(),
                   style: const TextStyle(fontSize: 12),
                 ),
               ],
@@ -347,7 +373,7 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
                     taskId: widget.taskId,
                     objectId: widget.objectId,
                     productId: productId,
-                    productName: name.isEmpty ? 'Продукт' : name,
+                    productName: name.isEmpty ? productK.tr() : name,
                     productCategory: category,
                     existingPhotoUrl: photoUrl?.toString(),
                     existingPrice: price?.toString(),
@@ -370,7 +396,7 @@ class _WorkerObjectProductsPageState extends State<WorkerObjectProductsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.my_location),
-            tooltip: 'Показать расстояние до объекта',
+            tooltip: showDistanceToObject.tr(),
             onPressed: loading ? null : _loadProducts,
           ),
         ],

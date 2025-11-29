@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-
-
+import 'package:price_book/keys.dart';
 import 'worker_object_products_page.dart';
 
 class WorkerTaskObjectsPage extends StatefulWidget {
@@ -35,7 +34,7 @@ class _WorkerTaskObjectsPageState extends State<WorkerTaskObjectsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Объекты задачи'),
+        title: Text(objectsK.tr()),
       ),
       body: ListView.builder(
         itemCount: objects.length,

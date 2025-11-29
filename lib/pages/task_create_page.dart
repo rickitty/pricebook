@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:price_book/keys.dart';
 import '../config.dart';
 
 class TaskCreatePage extends StatefulWidget {
@@ -47,7 +48,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
 
   Future<void> loadObjectsForWorker(String workerId) async {
     final locale = context.locale.languageCode;
-    print("Загружаем объекты для workerId=$workerId на языке $locale");
+    print("Loading objects for workerId=$workerId on language $locale");
 
     final token = await FirebaseAuth.instance.currentUser!.getIdToken();
     final res = await http.get(
@@ -65,7 +66,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
 
   Future<void> loadProducts() async {
     final locale = context.locale.languageCode;
-    print("Загружаем продукты на языке $locale");
+    print("Loading products on language: $locale");
 
     final token = await FirebaseAuth.instance.currentUser!.getIdToken();
     final res = await http.get(
@@ -85,7 +86,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
         selectedDate == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Заполните все поля")));
+      ).showSnackBar(SnackBar(content: Text(fillAllTheFields.tr())));
       return;
     }
 
@@ -110,7 +111,8 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
       },
       body: jsonEncode({
         "workerId": selectedWorker,
-        "date": selectedDate!.toIso8601String(),
+        "date":
+            "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}",
         "objects": formattedObjects,
       }),
     );
@@ -118,11 +120,11 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
     if (res.statusCode == 201) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Задача создана")));
+      ).showSnackBar(SnackBar(content: Text(taskIsMade.tr())));
     } else {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Ошибка: ${res.body}")));
+      ).showSnackBar(SnackBar(content: Text("Error: ${res.body}")));
     }
   }
 
@@ -147,7 +149,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Работник"),
+          Text(worker.tr()),
           DropdownSearch<Map<String, dynamic>>(
             items: (String filter, LoadProps? lp) async {
               final filtered = workers
@@ -166,10 +168,10 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
             popupProps: PopupProps.menu(
               showSearchBox: true,
               searchFieldProps: TextFieldProps(
-                decoration: InputDecoration(labelText: "Поиск работника"),
+                decoration: InputDecoration(labelText: workerSearch.tr()),
               ),
               itemBuilder: (context, item, isSelected, searchText) {
-                final name = (item["name"] ?? "Имя").toString();
+                final name = (item["name"] ?? "Name").toString();
                 final phone = (item["phone"] ?? "???").toString();
                 return ListTile(title: Text("$phone — $name"));
               },
@@ -181,7 +183,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
               });
             },
             dropdownBuilder: (context, selectedItem) {
-              if (selectedItem == null) return const Text("Выбор работника");
+              if (selectedItem == null) return Text(selectAWorker.tr());
               final name = (selectedItem["name"] ?? "Имя").toString();
               final phone = (selectedItem["phone"] ?? "???").toString();
               return Text("$phone — $name");
@@ -191,11 +193,11 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text("Объекты"),
+          Text(objectsK.tr()),
           TextField(
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
-              labelText: "Поиск объектов (по имени и категории)",
+              labelText: searchObjectsBy.tr(),
             ),
             onChanged: (v) => setState(() => searchObjects = v),
           ),
@@ -234,11 +236,11 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text("Продукты"),
+          Text(productsK.tr()),
           TextField(
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
-              labelText: "Поиск продуктов (по имени и категории)",
+              labelText: productsSearch.tr(),
             ),
             onChanged: (v) => setState(() => searchProducts = v),
           ),
@@ -253,18 +255,52 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
             child: SingleChildScrollView(
               child: Column(
                 children: filteredProducts.map((p) {
-                  return CheckboxListTile(
-                    value: selectedProducts.contains(p["_id"]),
-                    title: Text(p["name"] ?? "Без имени"),
-                    subtitle: Text(p["category"] ?? ""),
-                    onChanged: (v) {
-                      setState(() {
-                        if (v == true)
-                          selectedProducts.add(p["_id"]);
-                        else
-                          selectedProducts.remove(p["_id"]);
-                      });
-                    },
+                  final imageUrl = p["imageUrl"]?.toString();
+                  final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      leading: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.grey.shade200,
+                        ),
+                        clipBehavior: Clip.hardEdge,
+                        child: hasImage
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.image_not_supported),
+                              )
+                            : const Icon(Icons.inventory_2_outlined, size: 28),
+                      ),
+
+                      title: Text(
+                        p["name"] ?? "No name",
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+
+                      subtitle: Text(
+                        p["category"] ?? "",
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+
+                      trailing: Checkbox(
+                        value: selectedProducts.contains(p["_id"]),
+                        onChanged: (v) {
+                          setState(() {
+                            if (v == true) {
+                              selectedProducts.add(p["_id"]);
+                            } else {
+                              selectedProducts.remove(p["_id"]);
+                            }
+                          });
+                        },
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -285,16 +321,13 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
             },
             child: Text(
               selectedDate == null
-                  ? "Выбрать дату"
+                  ? chooseDate.tr()
                   : selectedDate!.toString().split(" ").first,
             ),
           ),
 
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: createTask,
-            child: const Text("Создать задачу"),
-          ),
+          ElevatedButton(onPressed: createTask, child: Text(createATask.tr())),
         ],
       ),
     );
