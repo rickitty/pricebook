@@ -140,7 +140,7 @@ class OtpStep extends StatelessWidget {
             text: TextSpan(
               style: const TextStyle(color: Colors.white70, fontSize: 14),
               children: [
-                TextSpan(text: "${didNotReceiveTheCode.tr()}? "),
+                TextSpan(text: didNotReceiveTheCode.tr()),
                 TextSpan(
                   text: sendAgain.tr(),
                   style: const TextStyle(

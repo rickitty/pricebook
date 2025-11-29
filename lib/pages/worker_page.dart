@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 // import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:price_book/keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -35,7 +36,6 @@ class _WorkerPageState extends State<WorkerPage> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   DateTime _startOfWeek(DateTime d) {
-
     final weekday = d.weekday;
     return d.subtract(Duration(days: weekday - 1));
   }
@@ -62,10 +62,10 @@ class _WorkerPageState extends State<WorkerPage> {
       });
     } else {
       setState(() => loading = false);
-      debugPrint("Ошибка загрузки задач: ${res.statusCode} ${res.body}");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Ошибка загрузки задач".tr())),
-      );
+      debugPrint("${tasksLoadingError.tr()}: ${res.statusCode} ${res.body}");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tasksLoadingError.tr())));
     }
   }
 
@@ -126,26 +126,23 @@ class _WorkerPageState extends State<WorkerPage> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'lat': pos.latitude,
-          'lng': pos.longitude,
-        }),
+        body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
       );
 
       if (res.statusCode != 200) {
         debugPrint('startTask error: ${res.statusCode} ${res.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось стартовать задачу')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(couldNotStartTheTask.tr())));
       } else {
         await loadByPhone(phone);
       }
     } catch (e) {
       debugPrint('startTask exception: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка геолокации или сети')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(geolocationOrNetworkError.tr())));
     }
   }
 
@@ -161,37 +158,36 @@ class _WorkerPageState extends State<WorkerPage> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'lat': pos.latitude,
-          'lng': pos.longitude,
-        }),
+        body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
       );
 
       if (!mounted) return;
 
       if (res.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Задача завершена')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(taskComplete.tr())));
         await loadByPhone(phone);
       } else if (res.statusCode == 400) {
         final data = jsonDecode(res.body);
         final missing = (data['missing'] ?? []) as List<dynamic>;
         final locale = context.locale.languageCode;
 
-        final names = missing.map((m) {
-          final n = m['name'];
-          if (n is Map) {
-            return n[locale] ?? n['ru'] ?? n['en'] ?? n.values.first;
-          }
-          return n?.toString() ?? '???';
-        }).join(', ');
+        final names = missing
+            .map((m) {
+              final n = m['name'];
+              if (n is Map) {
+                return n[locale] ?? n['ru'] ?? n['en'] ?? n.values.first;
+              }
+              return n?.toString() ?? '???';
+            })
+            .join(', ');
 
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Не все продукты заполнены'),
-            content: Text('Ты забыл: $names'),
+            title: Text(notAllProductsAreFilled.tr()),
+            content: Text('${youForgot.tr()}: $names'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -202,25 +198,23 @@ class _WorkerPageState extends State<WorkerPage> {
         );
       } else {
         debugPrint('completeTask error: ${res.statusCode} ${res.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка при завершении задачи')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(taskCompleteError.tr())));
       }
     } catch (e) {
       debugPrint('completeTask exception: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка геолокации или сети')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(geolocationOrNetworkError.tr())));
     }
   }
 
   void _openTask(Map<String, dynamic> task) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => WorkerTaskObjectsPage(task: task),
-      ),
+      MaterialPageRoute(builder: (_) => WorkerTaskObjectsPage(task: task)),
     );
 
     if (result == true) {
@@ -242,7 +236,7 @@ class _WorkerPageState extends State<WorkerPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Сегодня: $todayStr',
+              '${todayK.tr()}: $todayStr',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ],
@@ -283,8 +277,9 @@ class _WorkerPageState extends State<WorkerPage> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color:
-                              isSelected ? Colors.blueAccent : Colors.transparent,
+                          color: isSelected
+                              ? Colors.blueAccent
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.blueAccent),
                         ),
@@ -292,10 +287,10 @@ class _WorkerPageState extends State<WorkerPage> {
                         child: Text(
                           '${day.day}',
                           style: TextStyle(
-                            color:
-                                isSelected ? Colors.white : Colors.black87,
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -332,7 +327,7 @@ class _WorkerPageState extends State<WorkerPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text("Рабочие задачи".tr())),
+      appBar: AppBar(title: Text(tasksK.tr())),
       drawer: const AppDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(12),
@@ -346,9 +341,10 @@ class _WorkerPageState extends State<WorkerPage> {
                     child: filteredTasks.isEmpty
                         ? Center(
                             child: Text(
-                              "Задачи не найдены".tr(),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w500),
+                              tasksNotFound.tr(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           )
                         : ListView(
@@ -356,8 +352,9 @@ class _WorkerPageState extends State<WorkerPage> {
                               final allProducts = <String>{};
                               for (var obj in (t["objects"] ?? [])) {
                                 for (var p in (obj["products"] ?? [])) {
-                                  allProducts
-                                      .add(getLocalized(p["name"], locale));
+                                  allProducts.add(
+                                    getLocalized(p["name"], locale),
+                                  );
                                 }
                               }
 
@@ -370,27 +367,26 @@ class _WorkerPageState extends State<WorkerPage> {
                               final taskId = t['_id']?.toString() ?? '';
 
                               if (status == 'pending') {
-                                buttonText = 'Начать';
+                                buttonText = start.tr();
                                 buttonColor = Colors.blue;
                                 onPressed = () async {
                                   await _startTask(taskId);
                                   _openTask(t);
                                 };
                               } else if (status == 'in_progress') {
-                                buttonText = 'Продолжить';
+                                buttonText = continueK.tr();
                                 buttonColor = Colors.orange;
                                 onPressed = () {
                                   _openTask(t);
                                 };
                               } else {
-                                buttonText = 'Завершено';
+                                buttonText = complete.tr();
                                 buttonColor = Colors.green;
                                 onPressed = null;
                               }
 
                               return Card(
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                margin: const EdgeInsets.symmetric(vertical: 8),
                                 child: InkWell(
                                   onTap: () => _openTask(t),
                                   child: Padding(
@@ -400,7 +396,7 @@ class _WorkerPageState extends State<WorkerPage> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          "Работник: ${t["worker"]?["name"]?[locale] ?? t["worker"]?["name"]?["en"] ?? "Без имени"} (${t["worker"]?["phone"] ?? "??"})",
+                                          "${worker.tr()}: ${t["worker"]?["name"]?[locale] ?? t["worker"]?["name"]?["en"] ?? "Без имени"} (${t["worker"]?["phone"] ?? "??"})",
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -408,36 +404,48 @@ class _WorkerPageState extends State<WorkerPage> {
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          "Дата: ${t["date"].toString().split("T").first}",
+                                          "${date.tr()}: ${t["date"].toString().split("T").first}",
                                         ),
                                         const SizedBox(height: 12),
-                                        const Text(
-                                          "Объекты:",
+                                        Text(
+                                          objectsK.tr(),
                                           style: TextStyle(
-                                              fontWeight: FontWeight.bold),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         ...((t["objects"] ?? []) as List)
                                             .map<Widget>((obj) {
-                                          final name = getLocalized(
-                                              obj["name"], locale);
-                                          final address = getLocalized(
-                                              obj["address"], locale);
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 8, top: 2),
-                                            child: Text("- $name, $address"),
-                                          );
-                                        }),
+                                              final name = getLocalized(
+                                                obj["name"],
+                                                locale,
+                                              );
+                                              final address = getLocalized(
+                                                obj["address"],
+                                                locale,
+                                              );
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 8,
+                                                  top: 2,
+                                                ),
+                                                child: Text(
+                                                  "- $name, $address",
+                                                ),
+                                              );
+                                            }),
                                         const SizedBox(height: 12),
-                                        const Text(
-                                          "Продукты:",
+                                        Text(
+                                          "${productsK.tr()}:",
                                           style: TextStyle(
-                                              fontWeight: FontWeight.bold),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         ...allProducts.map(
                                           (productName) => Padding(
                                             padding: const EdgeInsets.only(
-                                                left: 16, top: 2),
+                                              left: 16,
+                                              top: 2,
+                                            ),
                                             child: Text("- $productName"),
                                           ),
                                         ),
@@ -459,8 +467,7 @@ class _WorkerPageState extends State<WorkerPage> {
                                             child: OutlinedButton(
                                               onPressed: () =>
                                                   _completeTask(taskId),
-                                              child: const Text(
-                                                  'Завершить задачу'),
+                                              child: Text(completeTheTask.tr()),
                                             ),
                                           ),
                                         ],

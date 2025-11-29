@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:price_book/keys.dart';
 import 'dart:convert';
 import '../config.dart';
 
@@ -75,11 +76,11 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
     if (res.statusCode == 200) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Сохранено")));
+      ).showSnackBar(const SnackBar(content: Text("Saved")));
     } else {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Ошибка: ${res.body}")));
+      ).showSnackBar(SnackBar(content: Text("Error: ${res.body}")));
     }
   }
 
@@ -93,7 +94,7 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Назначение объектов")),
+      appBar: AppBar(title: Text(assigningObjects.tr())),
       body: Column(
         children: [
           DropdownSearch<Map<String, dynamic>>(
@@ -114,7 +115,7 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
             popupProps: PopupProps.menu(
               showSearchBox: true,
               searchFieldProps: TextFieldProps(
-                decoration: InputDecoration(labelText: "Поиск работника"),
+                decoration: InputDecoration(labelText: workerSearch.tr()),
               ),
               itemBuilder: (context, item, isSelected, searchText) {
                 final name = (item["name"] ?? "Имя").toString();
@@ -123,7 +124,7 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
               },
             ),
             dropdownBuilder: (context, selectedItem) {
-              if (selectedItem == null) return const Text("Выберите работника");
+              if (selectedItem == null) return Text(selectAWorker.tr());
               final name = (selectedItem["name"] ?? "Имя").toString();
               final phone = (selectedItem["phone"] ?? "???").toString();
               return Text("$phone — $name");
@@ -150,8 +151,8 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
           Padding(
             padding: const EdgeInsets.all(8),
             child: TextField(
-              decoration: const InputDecoration(
-                labelText: "Поиск объектов",
+              decoration: InputDecoration(
+                labelText: objectsSearch.tr(),
                 border: OutlineInputBorder(),
               ),
               onChanged: (v) => setState(() => search = v),
@@ -166,8 +167,8 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
 
                 final lang = context.locale.languageCode;
 
-                final name = obj["name"]?[lang] ?? "Без имени";
-                final address = obj["address"]?[lang] ?? "Без адреса";
+                final name = obj["name"]?[lang] ?? noName.tr();
+                final address = obj["address"]?[lang] ?? noAddress.tr();
                 final category = obj["type"]?[lang] ?? "";
 
                 return CheckboxListTile(
@@ -190,7 +191,7 @@ class _AdminAssignPageState extends State<AdminAssignPage> {
               }).toList(),
             ),
           ),
-          ElevatedButton(onPressed: save, child: const Text("Сохранить")),
+          ElevatedButton(onPressed: save, child: Text(confirm.tr())),
         ],
       ),
     );

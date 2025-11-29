@@ -1,5 +1,5 @@
 //config.dart
-final baseUrl = 'http://localhost:3000/api';
+final baseUrl = 'http://10.199.117.155:3000/api';
 
 final workersUrl = '$baseUrl/user/workers';
 final objectsUrl = '$baseUrl/object/objects';

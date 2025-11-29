@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:price_book/keys.dart';
 
 import '../config.dart';
 
@@ -14,8 +17,8 @@ class WorkerProductTaskPage extends StatefulWidget {
   final String taskId;
   final String objectId;
   final String productId;
-  final String productName;          
-  final String? productCategory;     
+  final String productName;
+  final String? productCategory;
   final String? existingPhotoUrl;
   final String? existingPrice;
 
@@ -43,7 +46,8 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
   bool _saving = false;
 
   bool get _isAlreadyFilled =>
-      (widget.existingPhotoUrl != null && widget.existingPhotoUrl!.isNotEmpty) &&
+      (widget.existingPhotoUrl != null &&
+          widget.existingPhotoUrl!.isNotEmpty) &&
       (widget.existingPrice != null && widget.existingPrice!.isNotEmpty);
 
   @override
@@ -52,7 +56,14 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
     if (widget.existingPrice != null) {
       _priceController.text = widget.existingPrice!;
     }
+    _requestPermissions();
     _initCamera();
+  }
+
+  Future<void> _requestPermissions() async {
+    await Permission.camera.request();
+    await Permission.location.request();
+    await Permission.storage.request();
   }
 
   Future<void> _initCamera() async {
@@ -83,22 +94,28 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
   Future<Position> _getPosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Location services are disabled');
+      throw Exception('Location services are disabled.');
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        throw Exception('Location permission denied');
+        throw Exception('Location permission denied.');
       }
     }
     if (permission == LocationPermission.deniedForever) {
-      throw Exception('Location permission permanently denied');
+      throw Exception('Location permission permanently denied.');
     }
 
-    return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+    final locationSettings = const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 0,
+      timeLimit: Duration(seconds: 10),
+    );
+
+    return await Geolocator.getCurrentPosition(
+      locationSettings: locationSettings,
     );
   }
 
@@ -106,7 +123,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Камера ещё не готова')));
+      ).showSnackBar(SnackBar(content: Text(cameraIsNotReadyYet.tr())));
       return;
     }
 
@@ -121,7 +138,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Ошибка при съёмке')));
+      ).showSnackBar(SnackBar(content: Text(errorWhileFilming.tr())));
     }
   }
 
@@ -129,13 +146,13 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
     if (_capturedFile == null && widget.existingPhotoUrl == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Сначала сделайте фото')));
+      ).showSnackBar(SnackBar(content: Text(takeAPictureFirst.tr())));
       return;
     }
     if (_priceController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Введите цену')));
+      ).showSnackBar(SnackBar(content: Text(enterPrice.tr())));
       return;
     }
 
@@ -156,7 +173,6 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       request.fields['price'] = _priceController.text.trim();
       request.fields['lat'] = pos.latitude.toString();
       request.fields['lng'] = pos.longitude.toString();
-      // Пока стоит для отладки — если на бэке начнёшь учитывать, можешь убрать
       request.fields['debugIgnoreGeo'] = '1';
 
       if (_capturedFile != null) {
@@ -174,7 +190,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Сохранено')));
+        ).showSnackBar(SnackBar(content: Text(saved.tr())));
         Navigator.pop(context, true);
       } else if (response.statusCode == 403) {
         final body = await response.stream.bytesToString();
@@ -186,17 +202,17 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: const Text('Геолокация не совпадает'),
+              title: Text(geolocationIsNotMatching.tr()),
               content: Text(
                 distance != null
-                    ? 'Вы слишком далеко от объекта.\n'
-                      'Текущее расстояние: ${distance.toStringAsFixed(0)} м.'
-                    : 'Вы слишком далеко от объекта.',
+                    ? '${youAreTooFarFromTheObject.tr()}.\n'
+                          '${currentDistance.tr()}: ${distance.toStringAsFixed(0)} м.'
+                    : '${youAreTooFarFromTheObject.tr()}.',
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Понятно'),
+                  child: Text(confirm.tr()),
                 ),
               ],
             );
@@ -205,17 +221,17 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       } else {
         final body = await response.stream.bytesToString();
         debugPrint('save product error: ${response.statusCode} $body');
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Ошибка при сохранении')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorWhileSavingTheProduct.tr())),
+        );
       }
     } catch (e) {
       debugPrint('save product exception: $e');
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка геолокации или сети')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(geolocationOrNetworkError.tr())));
     }
   }
 
@@ -259,14 +275,14 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       }
     } else if (widget.existingPhotoUrl != null &&
         widget.existingPhotoUrl!.isNotEmpty) {
-      const fileBaseUrl = 'http://localhost:3000';
+      const fileBaseUrl = 'http://10.199.117.155:3000';
       photoPreview = Image.network(
         '$fileBaseUrl${widget.existingPhotoUrl}',
         height: 120,
         fit: BoxFit.cover,
       );
     } else {
-      photoPreview = const Text('Фото ещё нет');
+      photoPreview = Text(noPhotoYet.tr());
     }
 
     // КАРТОЧКА ТОВАРА (НАЗВАНИЕ + КАТЕГОРИЯ + СТАТУС)
@@ -275,36 +291,27 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.productName.isEmpty ? 'Без названия' : widget.productName,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+            widget.productName.isEmpty ? noName.tr() : widget.productName,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           if (widget.productCategory != null &&
               widget.productCategory!.isNotEmpty)
             Text(
               widget.productCategory!,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade700,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
           const SizedBox(height: 6),
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _isAlreadyFilled
                       ? Colors.green.withOpacity(0.12)
@@ -323,12 +330,11 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      _isAlreadyFilled ? 'Уже заполнено' : 'Нужно заполнить',
+                      _isAlreadyFilled ? filled.tr() : notFilled.tr(),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color:
-                            _isAlreadyFilled ? Colors.green : Colors.orange,
+                        color: _isAlreadyFilled ? Colors.green : Colors.orange,
                       ),
                     ),
                   ],
@@ -338,11 +344,8 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
               if (widget.existingPrice != null &&
                   widget.existingPrice!.isNotEmpty)
                 Text(
-                  'Текущая цена: ${widget.existingPrice}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade800,
-                  ),
+                  '${currentPrice.tr()}: ${widget.existingPrice}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                 ),
             ],
           ),
@@ -351,9 +354,11 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.productName.isEmpty
-          ? 'Продукт'
-          : widget.productName)),
+      appBar: AppBar(
+        title: Text(
+          widget.productName.isEmpty ? productK.tr() : widget.productName,
+        ),
+      ),
       body: Column(
         children: [
           productHeader,
@@ -377,7 +382,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
                         child: ElevatedButton.icon(
                           onPressed: _takePhoto,
                           icon: const Icon(Icons.camera_alt),
-                          label: const Text('Сделать фото'),
+                          label: Text(takeAPicture.tr()),
                         ),
                       ),
                     ],
@@ -390,8 +395,8 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
-                      labelText: 'Ввести цену',
+                    decoration: InputDecoration(
+                      labelText: enterPrice.tr(),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -406,7 +411,7 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Сохранить'),
+                          : Text(confirm.tr()),
                     ),
                   ),
                 ],

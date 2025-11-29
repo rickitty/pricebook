@@ -34,7 +34,7 @@ class AppDrawer extends StatelessWidget {
               if (role == 'admin')
                 ListTile(
                   leading: const Icon(Icons.assignment_add),
-                  title: Text(addAssignment.tr()),
+                  title: Text(assigningObjects.tr()),
                   onTap: () {
                     Navigator.push(
                       context,

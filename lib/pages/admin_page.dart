@@ -30,18 +30,15 @@ class _AdminPageState extends State<AdminPage>
         title: Text(adminPanel.tr()),
         bottom: TabBar(
           controller: controller,
-          tabs: const [
-            Tab(text: "Задачи"),
-            Tab(text: "Создать задачу"),
+          tabs: [
+            Tab(text: tasks.tr()),
+            Tab(text: createATask.tr()),
           ],
         ),
       ),
       body: TabBarView(
         controller: controller,
-        children: const [
-          TaskListPage(),
-          TaskCreatePage(),
-        ],
+        children: const [TaskListPage(), TaskCreatePage()],
       ),
     );
   }

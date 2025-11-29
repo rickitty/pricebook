@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config.dart';
 import '../../keys.dart';
-import './home_page.dart'; 
+import './home_page.dart';
 import 'widgets/phone_step.dart';
 import 'widgets/otp_step.dart';
 
@@ -28,8 +28,10 @@ class _LoginScreenState extends State<LoginScreen> {
   String selectedCountryCode = "kz";
 
   final _phoneController = TextEditingController();
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool isCodeSent = false;
@@ -66,28 +68,40 @@ class _LoginScreenState extends State<LoginScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: ConstrainedBox(
-                  constraints:
-                      BoxConstraints(minHeight: constraints.maxHeight - 32),
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 32,
+                  ),
                   child: Center(
                     child: Container(
                       constraints: const BoxConstraints(maxWidth: 420),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 24),
+                        horizontal: 20,
+                        vertical: 24,
+                      ),
                       decoration: BoxDecoration(
                         // ignore: deprecated_member_use
                         color: Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color.fromARGB(99, 255, 255, 255)),
+                        border: Border.all(
+                          color: const Color.fromARGB(99, 255, 255, 255),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             blurRadius: 18,
                             spreadRadius: 2,
                             offset: const Offset(0, 10),
                             // ignore: deprecated_member_use
-                            color: const Color.fromARGB(255, 107, 123, 177).withOpacity(0.25),
+                            color: const Color.fromARGB(
+                              255,
+                              107,
+                              123,
+                              177,
+                            ).withOpacity(0.25),
                           ),
                         ],
                       ),
@@ -101,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Price Book', 
+                            'Price Book',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -111,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Secure login', 
+                            secureLogin.tr(),
                             style: const TextStyle(
                               fontSize: 13,
                               color: Colors.white70,
@@ -188,9 +202,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final raw = _phoneController.text.trim();
 
     if (raw.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(phoneNumber.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(phoneNumber.tr())));
       return;
     }
 
@@ -218,9 +232,9 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -229,9 +243,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final smsCode = _otpControllers.map((c) => c.text).join();
     if (smsCode.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(enter6DigitCode.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(enter6DigitCode.tr())));
       return;
     }
 
@@ -244,8 +258,9 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseAuth.instance.signInWithCredential(credential);
       await _afterLogin();
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -263,17 +278,18 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (response.statusCode != 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Server error: ${response.body}")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Server error: ${response.body}")));
       return;
     }
 
     final data = jsonDecode(response.body);
     final role = data["role"] ?? "worker";
 
-    final userRef =
-        FirebaseFirestore.instance.collection("users").doc(user.uid);
+    final userRef = FirebaseFirestore.instance
+        .collection("users")
+        .doc(user.uid);
 
     final snapshot = await userRef.get();
 
@@ -284,9 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
         "createdAt": DateTime.now(),
       });
     } else {
-      await userRef.update({
-        "role": role,
-      });
+      await userRef.update({"role": role});
     }
 
     final prefs = await SharedPreferences.getInstance();
