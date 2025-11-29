@@ -1,10 +1,10 @@
-// TODO Implement this library.
 // lib/screens/login/widgets/phone_step.dart
+// Updated to send phone number without '+' for API requirements
 
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_multi_formatter/formatters/masked_input_formatter.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 
 import '../../../keys.dart';
 
@@ -14,7 +14,7 @@ class PhoneStep extends StatelessWidget {
   final String selectedCountryCode;
   final TextEditingController phoneController;
   final VoidCallback onGetCode;
-  final VoidCallback onSelectCountry; // сейчас не используется, но пусть будет
+  final VoidCallback onSelectCountry;
 
   const PhoneStep({
     super.key,
@@ -69,33 +69,34 @@ class PhoneStep extends StatelessWidget {
               child: TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
-                // 👉 как просили — ничего не меняю здесь
-                inputFormatters: selectedDialCode == "+7"
-                    ? [MaskedInputFormatter("+# (###) ### ####")]
-                    : [],
+                inputFormatters: [
+                  MaskedInputFormatter("# ### ### ####"),
+                ],
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
-                  hintText: selectedDialCode == "+7"
-                      ? "+7 (777) 123 4567"
-                      : "Phone number",
+                  hintText: "7 707 123 4567",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
 
-            // кнопка выбора страны
+            // Country picker button
             GestureDetector(
               onTap: onSelectCountry,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -110,10 +111,7 @@ class PhoneStep extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(
-                      Icons.arrow_drop_down,
-                      size: 22,
-                    ),
+                    const Icon(Icons.arrow_drop_down, size: 22),
                   ],
                 ),
               ),
@@ -152,7 +150,6 @@ class PhoneStep extends StatelessWidget {
     );
   }
 
-  // Диалог выбора страны — статический helper, вызываем из LoginScreen
   static Future<void> showCountryDialog({
     required BuildContext context,
     required ValueChanged<CountryCode> onChanged,

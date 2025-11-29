@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -160,15 +159,11 @@ class _WorkerProductTaskPageState extends State<WorkerProductTaskPage> {
 
     try {
       final pos = await _getPosition();
-      final token =
-          await FirebaseAuth.instance.currentUser?.getIdToken(true) ?? "";
-
       final uri = Uri.parse(
         '$baseUrl/tasks/${widget.taskId}/objects/${widget.objectId}/products/${widget.productId}',
       );
 
       final request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer $token';
 
       request.fields['price'] = _priceController.text.trim();
       request.fields['lat'] = pos.latitude.toString();

@@ -1,16 +1,13 @@
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
-// import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:price_book/keys.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
-
-import 'package:price_book/drawer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:price_book/keys.dart';
 import '../config.dart';
 import 'worker_task_objects_page.dart';
+import 'package:price_book/drawer.dart';
+import 'package:http/http.dart' as http;
 
 class WorkerPage extends StatefulWidget {
   const WorkerPage({super.key});
@@ -44,25 +41,23 @@ class _WorkerPageState extends State<WorkerPage> {
     if (phone.isEmpty) return;
 
     setState(() => loading = true);
+    try {
+      final res = await http.get(Uri.parse("$baseUrl/tasks/by-phone/$phone"));
+      if (!mounted) return;
 
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
-    final cleanPhone = Uri.encodeComponent(phone.replaceAll("+", ""));
-
-    final res = await http.get(
-      Uri.parse("$baseUrl/tasks/by-phone/$cleanPhone"),
-      headers: {"Authorization": "Bearer $token"},
-    );
-
-    if (!mounted) return;
-
-    if (res.statusCode == 200) {
-      setState(() {
-        tasks = jsonDecode(res.body);
-        loading = false;
-      });
-    } else {
+      if (res.statusCode == 200) {
+        setState(() {
+          tasks = jsonDecode(res.body);
+          loading = false;
+        });
+      } else {
+        setState(() => loading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(tasksLoadingError.tr())));
+      }
+    } catch (e) {
       setState(() => loading = false);
-      debugPrint("${tasksLoadingError.tr()}: ${res.statusCode} ${res.body}");
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(tasksLoadingError.tr())));
@@ -72,15 +67,9 @@ class _WorkerPageState extends State<WorkerPage> {
   Future<void> _initPhoneAndLoadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final cachedPhone = prefs.getString("phone") ?? "";
+    setState(() => phone = cachedPhone);
 
-    final user = FirebaseAuth.instance.currentUser;
-    final actualPhone = cachedPhone.isNotEmpty
-        ? cachedPhone
-        : (user?.phoneNumber ?? "");
-
-    setState(() => phone = actualPhone);
-
-    await loadByPhone(actualPhone);
+    await loadByPhone(cachedPhone);
   }
 
   @override
@@ -93,23 +82,19 @@ class _WorkerPageState extends State<WorkerPage> {
 
   Future<Position> _getPosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Location services are disabled');
-    }
+    if (!serviceEnabled) throw Exception('Location services disabled');
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('Location permission denied');
-      }
+      if (permission == LocationPermission.denied)
+        throw Exception('Location denied');
     }
     if (permission == LocationPermission.deniedForever) {
-      throw Exception('Location permission permanently denied');
+      throw Exception('Location permanently denied');
     }
 
     return Geolocator.getCurrentPosition(
-      // ignore: deprecated_member_use
       desiredAccuracy: LocationAccuracy.high,
     );
   }
@@ -117,20 +102,14 @@ class _WorkerPageState extends State<WorkerPage> {
   Future<void> _startTask(String taskId) async {
     try {
       final pos = await _getPosition();
-      final token =
-          await FirebaseAuth.instance.currentUser?.getIdToken(true) ?? "";
 
       final res = await http.post(
         Uri.parse('$baseUrl/tasks/$taskId/start'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
       );
 
       if (res.statusCode != 200) {
-        debugPrint('startTask error: ${res.statusCode} ${res.body}');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(couldNotStartTheTask.tr())));
@@ -138,8 +117,6 @@ class _WorkerPageState extends State<WorkerPage> {
         await loadByPhone(phone);
       }
     } catch (e) {
-      debugPrint('startTask exception: $e');
-      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(geolocationOrNetworkError.tr())));
@@ -149,15 +126,10 @@ class _WorkerPageState extends State<WorkerPage> {
   Future<void> _completeTask(String taskId) async {
     try {
       final pos = await _getPosition();
-      final token =
-          await FirebaseAuth.instance.currentUser?.getIdToken(true) ?? "";
 
       final res = await http.post(
         Uri.parse('$baseUrl/tasks/$taskId/complete'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
       );
 
@@ -176,9 +148,8 @@ class _WorkerPageState extends State<WorkerPage> {
         final names = missing
             .map((m) {
               final n = m['name'];
-              if (n is Map) {
+              if (n is Map)
                 return n[locale] ?? n['ru'] ?? n['en'] ?? n.values.first;
-              }
               return n?.toString() ?? '???';
             })
             .join(', ');
@@ -197,13 +168,11 @@ class _WorkerPageState extends State<WorkerPage> {
           ),
         );
       } else {
-        debugPrint('completeTask error: ${res.statusCode} ${res.body}');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(taskCompleteError.tr())));
       }
     } catch (e) {
-      debugPrint('completeTask exception: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -217,15 +186,12 @@ class _WorkerPageState extends State<WorkerPage> {
       MaterialPageRoute(builder: (_) => WorkerTaskObjectsPage(task: task)),
     );
 
-    if (result == true) {
-      await loadByPhone(phone);
-    }
+    if (result == true) await loadByPhone(phone);
   }
 
   Widget _buildDateFilter() {
     final weekStart = _startOfWeek(selectedDate);
     const weekdaysShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
     final today = DateTime.now();
     final todayStr = DateFormat('dd.MM.yyyy').format(today);
 
@@ -309,22 +275,18 @@ class _WorkerPageState extends State<WorkerPage> {
   @override
   Widget build(BuildContext context) {
     final locale = context.locale.languageCode;
-
-    final List filteredTasks;
-    if (!filterActive) {
-      filteredTasks = tasks;
-    } else {
-      filteredTasks = tasks.where((t) {
-        final raw = t['date'];
-        if (raw == null) return false;
-        try {
-          final dt = DateTime.parse(raw.toString()).toLocal();
-          return _isSameDate(dt, selectedDate);
-        } catch (_) {
-          return false;
-        }
-      }).toList();
-    }
+    final filteredTasks = filterActive
+        ? tasks.where((t) {
+            final raw = t['date'];
+            if (raw == null) return false;
+            try {
+              final dt = DateTime.parse(raw.toString()).toLocal();
+              return _isSameDate(dt, selectedDate);
+            } catch (_) {
+              return false;
+            }
+          }).toList()
+        : tasks;
 
     return Scaffold(
       appBar: AppBar(title: Text(tasksK.tr())),
@@ -363,7 +325,6 @@ class _WorkerPageState extends State<WorkerPage> {
                               String buttonText;
                               Color buttonColor;
                               VoidCallback? onPressed;
-
                               final taskId = t['_id']?.toString() ?? '';
 
                               if (status == 'pending') {
@@ -376,9 +337,7 @@ class _WorkerPageState extends State<WorkerPage> {
                               } else if (status == 'in_progress') {
                                 buttonText = continueK.tr();
                                 buttonColor = Colors.orange;
-                                onPressed = () {
-                                  _openTask(t);
-                                };
+                                onPressed = () => _openTask(t);
                               } else {
                                 buttonText = complete.tr();
                                 buttonColor = Colors.green;
@@ -409,7 +368,7 @@ class _WorkerPageState extends State<WorkerPage> {
                                         const SizedBox(height: 12),
                                         Text(
                                           objectsK.tr(),
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -436,7 +395,7 @@ class _WorkerPageState extends State<WorkerPage> {
                                         const SizedBox(height: 12),
                                         Text(
                                           "${productsK.tr()}:",
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),

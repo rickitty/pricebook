@@ -1,5 +1,5 @@
 //config.dart
-final baseUrl = 'http://10.199.117.155:3000/api';
+final baseUrl = 'http://localhost:3000/api';
 
 final workersUrl = '$baseUrl/user/workers';
 final objectsUrl = '$baseUrl/object/objects';
@@ -10,3 +10,6 @@ final createTaskUrl = '$baseUrl/tasks/create-task';
 final tasksAllUrl = '$baseUrl/tasks/all';
 final tasksByPhoneUrl = '$baseUrl/tasks/by-phone'; 
 final workerObjectsUrl = '$baseUrl/object/objects-of';
+final sendCode='$baseUrl/proxy/sendcode';
+final login='$baseUrl/proxy/login';
+final refreshToken='$baseUrl/proxy/refresh';
