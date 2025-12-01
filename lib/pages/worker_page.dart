@@ -312,6 +312,22 @@ class _WorkerPageState extends State<WorkerPage> {
                         : ListView(
                             children: filteredTasks.map((t) {
                               final allProducts = <String>{};
+                              bool isTodayTask = false;
+                              final rawDate = t['date'];
+                              if (rawDate != null) {
+                                try {
+                                  final taskDate = DateTime.parse(
+                                    rawDate.toString(),
+                                  ).toLocal();
+                                  isTodayTask = _isSameDate(
+                                    taskDate,
+                                    DateTime.now(),
+                                  );
+                                } catch (_) {
+                                  isTodayTask = false;
+                                }
+                              }
+
                               for (var obj in (t["objects"] ?? [])) {
                                 for (var p in (obj["products"] ?? [])) {
                                   allProducts.add(
@@ -331,13 +347,35 @@ class _WorkerPageState extends State<WorkerPage> {
                                 buttonText = start.tr();
                                 buttonColor = Colors.blue;
                                 onPressed = () async {
+                                  if (!isTodayTask) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          canDoTaskOnlyOnAssignedDay.tr(),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   await _startTask(taskId);
                                   _openTask(t);
                                 };
                               } else if (status == 'in_progress') {
                                 buttonText = continueK.tr();
                                 buttonColor = Colors.orange;
-                                onPressed = () => _openTask(t);
+                                onPressed = () {
+                                  if (!isTodayTask) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          canDoTaskOnlyOnAssignedDay.tr(),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  _openTask(t);
+                                };
                               } else {
                                 buttonText = complete.tr();
                                 buttonColor = Colors.green;
@@ -347,7 +385,21 @@ class _WorkerPageState extends State<WorkerPage> {
                               return Card(
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 child: InkWell(
-                                  onTap: () => _openTask(t),
+                                  onTap: () {
+                                    if (!isTodayTask) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            canDoTaskOnlyOnAssignedDay.tr(),
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    _openTask(t);
+                                  },
                                   child: Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Column(
@@ -424,8 +476,22 @@ class _WorkerPageState extends State<WorkerPage> {
                                           SizedBox(
                                             width: double.infinity,
                                             child: OutlinedButton(
-                                              onPressed: () =>
-                                                  _completeTask(taskId),
+                                              onPressed: () {
+                                                if (!isTodayTask) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        canCompleteTaskOnlyOnAssignedDay
+                                                            .tr(),
+                                                      ),
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+                                                _completeTask(taskId);
+                                              },
                                               child: Text(completeTheTask.tr()),
                                             ),
                                           ),

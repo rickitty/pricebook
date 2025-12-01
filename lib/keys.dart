@@ -92,3 +92,6 @@ const filled='Filled';
 const currentPrice='Current_price';
 const takeAPicture='Take_a_picture';
 const searchObjectsBy='Search_objects_by';
+const canDoTaskOnlyOnAssignedDay = 'Can_do_task_only_on_assigned_day';
+const canCompleteTaskOnlyOnAssignedDay = 'Can_complete_task_only_on_assigned_day';
+const save = 'Save';
