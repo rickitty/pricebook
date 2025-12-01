@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:price_book/keys.dart';
 import '../config.dart';
+import 'edit_task_page.dart';
 
 class TaskListPage extends StatefulWidget {
   const TaskListPage({super.key});
@@ -16,6 +17,7 @@ class _TaskListPageState extends State<TaskListPage> {
   List tasks = [];
   bool loading = false;
   String phone = "";
+  bool filteredByPhone = false;
 
   String getLocalized(dynamic data, String locale) {
     if (data == null || data is! Map) return "";
@@ -33,14 +35,14 @@ class _TaskListPageState extends State<TaskListPage> {
           tasks = jsonDecode(res.body);
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки: ${res.body}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка загрузки: ${res.body}')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     } finally {
       setState(() => loading = false);
     }
@@ -49,7 +51,10 @@ class _TaskListPageState extends State<TaskListPage> {
   Future<void> loadByPhone() async {
     if (phone.isEmpty) return;
 
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      filteredByPhone = true;
+    });
 
     try {
       final res = await http.get(Uri.parse("$baseUrl/tasks/by-phone/$phone"));
@@ -59,14 +64,14 @@ class _TaskListPageState extends State<TaskListPage> {
           tasks = jsonDecode(res.body);
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки: ${res.body}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка загрузки: ${res.body}')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     } finally {
       setState(() => loading = false);
     }
@@ -122,8 +127,12 @@ class _TaskListPageState extends State<TaskListPage> {
             child: tasks.isEmpty && !loading
                 ? Center(child: Text('Нет задач'))
                 : ListView(
-                    children: tasks.map((t) {
+                    children: tasks.map((tRaw) {
+                      final t = tRaw as Map<String, dynamic>;
+
                       final allProducts = <String>{};
+                      final locale = context.locale.languageCode;
+
                       for (var obj in (t["objects"] ?? [])) {
                         for (var p in (obj["products"] ?? [])) {
                           allProducts.add(getLocalized(p["name"], locale));
@@ -137,12 +146,40 @@ class _TaskListPageState extends State<TaskListPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "${worker.tr()}: ${t["worker"]?["name"]?[locale] ?? t["worker"]?["name"]?["en"] ?? noName.tr()} (${t["worker"]?["phone"] ?? "??"})",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      "${worker.tr()}: ${t["worker"]?["name"]?[locale] ?? t["worker"]?["name"]?["en"] ?? noName.tr()} (${t["worker"]?["phone"] ?? "??"})",
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    tooltip: 'Редактировать задачу',
+                                    onPressed: () async {
+                                      final updated = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EditTaskPage(task: t),
+                                        ),
+                                      );
+
+                                      if (updated == true) {
+                                        if (filteredByPhone &&
+                                            phone.isNotEmpty) {
+                                          await loadByPhone();
+                                        } else {
+                                          await loadAllTasks();
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 6),
                               Text(
@@ -151,24 +188,39 @@ class _TaskListPageState extends State<TaskListPage> {
                               const SizedBox(height: 12),
                               Text(
                                 objectsK.tr(),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              ...((t["objects"] ?? []) as List).map<Widget>((obj) {
+                              ...((t["objects"] ?? []) as List).map<Widget>((
+                                obj,
+                              ) {
                                 final name = getLocalized(obj["name"], locale);
-                                final address = getLocalized(obj["address"], locale);
+                                final address = getLocalized(
+                                  obj["address"],
+                                  locale,
+                                );
                                 return Padding(
-                                  padding: const EdgeInsets.only(left: 8, top: 2),
+                                  padding: const EdgeInsets.only(
+                                    left: 8,
+                                    top: 2,
+                                  ),
                                   child: Text("- $name, $address"),
                                 );
                               }),
                               const SizedBox(height: 12),
                               Text(
                                 productsK.tr(),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               ...allProducts.map(
                                 (productName) => Padding(
-                                  padding: const EdgeInsets.only(left: 16, top: 2),
+                                  padding: const EdgeInsets.only(
+                                    left: 16,
+                                    top: 2,
+                                  ),
                                   child: Text("- $productName"),
                                 ),
                               ),

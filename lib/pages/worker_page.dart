@@ -11,7 +11,6 @@ import 'package:http/http.dart' as http;
 
 class WorkerPage extends StatefulWidget {
   const WorkerPage({super.key});
-
   @override
   State<WorkerPage> createState() => _WorkerPageState();
 }
@@ -20,10 +19,8 @@ class _WorkerPageState extends State<WorkerPage> {
   List tasks = [];
   bool loading = false;
   String phone = "";
-
   DateTime selectedDate = DateTime.now();
   bool filterActive = false;
-
   String getLocalized(dynamic data, String locale) {
     if (data == null || data is! Map) return "";
     return data[locale] ?? data["en"] ?? data.values.first.toString();
@@ -31,7 +28,6 @@ class _WorkerPageState extends State<WorkerPage> {
 
   bool _isSameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
-
   DateTime _startOfWeek(DateTime d) {
     final weekday = d.weekday;
     return d.subtract(Duration(days: weekday - 1));
@@ -39,12 +35,10 @@ class _WorkerPageState extends State<WorkerPage> {
 
   Future<void> loadByPhone(String phone) async {
     if (phone.isEmpty) return;
-
     setState(() => loading = true);
     try {
       final res = await http.get(Uri.parse("$baseUrl/tasks/by-phone/$phone"));
       if (!mounted) return;
-
       if (res.statusCode == 200) {
         setState(() {
           tasks = jsonDecode(res.body);
@@ -68,7 +62,6 @@ class _WorkerPageState extends State<WorkerPage> {
     final prefs = await SharedPreferences.getInstance();
     final cachedPhone = prefs.getString("phone") ?? "";
     setState(() => phone = cachedPhone);
-
     await loadByPhone(cachedPhone);
   }
 
@@ -83,7 +76,6 @@ class _WorkerPageState extends State<WorkerPage> {
   Future<Position> _getPosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) throw Exception('Location services disabled');
-
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -93,7 +85,6 @@ class _WorkerPageState extends State<WorkerPage> {
     if (permission == LocationPermission.deniedForever) {
       throw Exception('Location permanently denied');
     }
-
     return Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
@@ -102,13 +93,11 @@ class _WorkerPageState extends State<WorkerPage> {
   Future<void> _startTask(String taskId) async {
     try {
       final pos = await _getPosition();
-
       final res = await http.post(
         Uri.parse('$baseUrl/tasks/$taskId/start'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
       );
-
       if (res.statusCode != 200) {
         ScaffoldMessenger.of(
           context,
@@ -126,15 +115,12 @@ class _WorkerPageState extends State<WorkerPage> {
   Future<void> _completeTask(String taskId) async {
     try {
       final pos = await _getPosition();
-
       final res = await http.post(
         Uri.parse('$baseUrl/tasks/$taskId/complete'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
       );
-
       if (!mounted) return;
-
       if (res.statusCode == 200) {
         ScaffoldMessenger.of(
           context,
@@ -144,7 +130,6 @@ class _WorkerPageState extends State<WorkerPage> {
         final data = jsonDecode(res.body);
         final missing = (data['missing'] ?? []) as List<dynamic>;
         final locale = context.locale.languageCode;
-
         final names = missing
             .map((m) {
               final n = m['name'];
@@ -153,7 +138,6 @@ class _WorkerPageState extends State<WorkerPage> {
               return n?.toString() ?? '???';
             })
             .join(', ');
-
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
@@ -185,7 +169,6 @@ class _WorkerPageState extends State<WorkerPage> {
       context,
       MaterialPageRoute(builder: (_) => WorkerTaskObjectsPage(task: task)),
     );
-
     if (result == true) await loadByPhone(phone);
   }
 
@@ -194,7 +177,6 @@ class _WorkerPageState extends State<WorkerPage> {
     const weekdaysShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     final today = DateTime.now();
     final todayStr = DateFormat('dd.MM.yyyy').format(today);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -216,7 +198,6 @@ class _WorkerPageState extends State<WorkerPage> {
             itemBuilder: (context, index) {
               final day = weekStart.add(Duration(days: index));
               final isSelected = _isSameDate(day, selectedDate);
-
               return GestureDetector(
                 onTap: () {
                   setState(() {
@@ -287,7 +268,6 @@ class _WorkerPageState extends State<WorkerPage> {
             }
           }).toList()
         : tasks;
-
     return Scaffold(
       appBar: AppBar(title: Text(tasksK.tr())),
       drawer: const AppDrawer(),
@@ -312,6 +292,21 @@ class _WorkerPageState extends State<WorkerPage> {
                         : ListView(
                             children: filteredTasks.map((t) {
                               final allProducts = <String>{};
+                              bool isTodayTask = false;
+                              final rawDate = t['date'];
+                              if (rawDate != null) {
+                                try {
+                                  final taskDate = DateTime.parse(
+                                    rawDate.toString(),
+                                  ).toLocal();
+                                  isTodayTask = _isSameDate(
+                                    taskDate,
+                                    DateTime.now(),
+                                  );
+                                } catch (_) {
+                                  isTodayTask = false;
+                                }
+                              }
                               for (var obj in (t["objects"] ?? [])) {
                                 for (var p in (obj["products"] ?? [])) {
                                   allProducts.add(
@@ -319,35 +314,68 @@ class _WorkerPageState extends State<WorkerPage> {
                                   );
                                 }
                               }
-
                               final status =
                                   (t['status'] ?? 'pending') as String;
                               String buttonText;
                               Color buttonColor;
                               VoidCallback? onPressed;
                               final taskId = t['_id']?.toString() ?? '';
-
                               if (status == 'pending') {
                                 buttonText = start.tr();
                                 buttonColor = Colors.blue;
                                 onPressed = () async {
+                                  if (!isTodayTask) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          canDoTaskOnlyOnAssignedDay.tr(),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   await _startTask(taskId);
                                   _openTask(t);
                                 };
                               } else if (status == 'in_progress') {
                                 buttonText = continueK.tr();
                                 buttonColor = Colors.orange;
-                                onPressed = () => _openTask(t);
+                                onPressed = () {
+                                  if (!isTodayTask) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          canDoTaskOnlyOnAssignedDay.tr(),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  _openTask(t);
+                                };
                               } else {
                                 buttonText = complete.tr();
                                 buttonColor = Colors.green;
                                 onPressed = null;
                               }
-
                               return Card(
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 child: InkWell(
-                                  onTap: () => _openTask(t),
+                                  onTap: () {
+                                    if (!isTodayTask) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            canDoTaskOnlyOnAssignedDay.tr(),
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    _openTask(t);
+                                  },
                                   child: Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Column(
@@ -424,8 +452,22 @@ class _WorkerPageState extends State<WorkerPage> {
                                           SizedBox(
                                             width: double.infinity,
                                             child: OutlinedButton(
-                                              onPressed: () =>
-                                                  _completeTask(taskId),
+                                              onPressed: () {
+                                                if (!isTodayTask) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        canCompleteTaskOnlyOnAssignedDay
+                                                            .tr(),
+                                                      ),
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+                                                _completeTask(taskId);
+                                              },
                                               child: Text(completeTheTask.tr()),
                                             ),
                                           ),

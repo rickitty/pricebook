@@ -84,5 +84,8 @@
     "Filled":"Filled",
     "Current_price":"Current price",
     "Take_a_picture":"Take a picture",
-    "Search_objects_by":"Objects search (by name or category)"
+    "Search_objects_by":"Objects search (by name or category)",
+     "Can_do_task_only_on_assigned_day": "This task can be done only on the day it is scheduled",
+    "Can_complete_task_only_on_assigned_day": "This task can be completed only on the day it is scheduled",
+    "Save": "Save"
 }
