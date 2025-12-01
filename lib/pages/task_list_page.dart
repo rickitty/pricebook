@@ -87,7 +87,7 @@ class _TaskListPageState extends State<TaskListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final locale = context.locale.languageCode;
+    // final locale = context.locale.languageCode;
 
     return Padding(
       padding: const EdgeInsets.all(12),

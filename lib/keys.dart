@@ -99,3 +99,4 @@ const canDoTaskOnlyOnAssignedDay =
 const canCompleteTaskOnlyOnAssignedDay =
     'Cannot_complete_task_before_assigned_day';
 const save = "Save";
+const confirmFinishAnyway="Confirm_finish_anyway";

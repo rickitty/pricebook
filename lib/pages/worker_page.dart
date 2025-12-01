@@ -112,15 +112,27 @@ class _WorkerPageState extends State<WorkerPage> {
     }
   }
 
-  Future<void> _completeTask(String taskId) async {
+  Future<void> _completeTask(String taskId, {bool force = false}) async {
     try {
       final pos = await _getPosition();
+
+      final Map<String, dynamic> body = {
+        'lat': pos.latitude,
+        'lng': pos.longitude,
+      };
+
+      if (force) {
+        body['force'] = true;
+      }
+
       final res = await http.post(
         Uri.parse('$baseUrl/tasks/$taskId/complete'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'lat': pos.latitude, 'lng': pos.longitude}),
+        body: jsonEncode(body),
       );
+
       if (!mounted) return;
+
       if (res.statusCode == 200) {
         ScaffoldMessenger.of(
           context,
@@ -133,11 +145,13 @@ class _WorkerPageState extends State<WorkerPage> {
         final names = missing
             .map((m) {
               final n = m['name'];
-              if (n is Map)
+              if (n is Map) {
                 return n[locale] ?? n['ru'] ?? n['en'] ?? n.values.first;
+              }
               return n?.toString() ?? '???';
             })
             .join(', ');
+
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
@@ -146,7 +160,14 @@ class _WorkerPageState extends State<WorkerPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
+                child: const Text('Отмена'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _completeTask(taskId, force: true);
+                },
+                child: Text(confirmFinishAnyway.tr()),
               ),
             ],
           ),
