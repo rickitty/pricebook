@@ -1,16 +1,27 @@
-# price_book
+# Price Book
 
-A new Flutter project.
+Мобильное приложение для учета и мониторинга цен на товары.  
+Реализовано на Flutter (мобильная часть) с backend на Node.js + MongoDB. Используется Firebase Authentication (вход по телефону). В приложении реализованы: ролевой доступ (Admin / Worker), геолокация, фотофиксация, многоязычность (KZ / RU / EN), интеграция с корпоративным API для профиля и данных объектов.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## Функциональные возможности
+- Вход по номеру телефона (Firebase Auth, OTP).  
+- Ролевая модель: **Admin** (назначает задания, управляет объектами/товарами) / **Worker** (выполняет задания на объектах, фотографирует товары, вносит цену).  
+- Sidebar с переключением языка и отображением реальных данных профиля, получаемых через корпоративный API, предоставленный организацией.  
+- Геолокация: проверка нахождения работника рядом с объектом + отображение расстояния.  
+- Фотофиксация товара и отметка "сфоткано/не сфоткано".  
+- Фильтрация продуктов по категориям.  
+- Многоязычность (i18n): JSON-файлы переводов (kz/ru/en).  
+- Хранение данных: MongoDB.
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Технологический стек
+- **Mobile:** Flutter, Dart  
+- **Backend:** Node.js, Express  
+- **БД:** MongoDB  
+- **UI / Prototyping:** Figma, Miro (CJM, user flows)  
+- **VCS:** Git, GitHub
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
